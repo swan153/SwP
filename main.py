@@ -58,29 +58,28 @@ current_level_exp = st.session_state.exp % EXP_PER_LEVEL
 progress_percentage = min(current_level_exp / EXP_PER_LEVEL, 1.0)
 
 def get_character_info(level):
-    # 각 레벨별 캐릭터 이미지 URL 및 설명 설정
-    # (원하는 이미지 URL이나 파일 경로 'assets/level1.png' 등으로 자유롭게 교체 가능합니다)
+    # 정확한 계란, 병아리, 독수리 일러스트 이미지 URL
     if level == 1:
         return (
-            "https://cdn-icons-png.flaticon.com/512/824/824239.png", 
+            "https://cdn-icons-png.flaticon.com/512/3132/3132712.png", 
             "알 단계", 
             "막 공부를 시작하려는 소중한 알입니다."
         )
     elif level == 2:
         return (
-            "https://cdn-icons-png.flaticon.com/512/4825/4825038.png", 
+            "https://cdn-icons-png.flaticon.com/512/2970/2970785.png", 
             "갓 깨어난 병아리", 
             "조금씩 지식을 흡수하며 깨어났어요!"
         )
     elif level == 3:
         return (
-            "https://cdn-icons-png.flaticon.com/512/3069/3069172.png", 
+            "https://cdn-icons-png.flaticon.com/512/2641/2641409.png", 
             "열공 병아리", 
             "책을 들고 몰입 중인 당당한 병아리!"
         )
     elif level == 4:
         return (
-            "https://cdn-icons-png.flaticon.com/512/3069/3069224.png", 
+            "https://cdn-icons-png.flaticon.com/512/1998/1998611.png", 
             "멋진 독수리", 
             "이제 어려운 문제도 쉽게 파헤쳐요!"
         )
@@ -90,7 +89,6 @@ def get_character_info(level):
             "공부의 신 독수리 왕", 
             "모든 목표를 정복한 완벽한 공부 마스터!"
         )
-
 char_img, char_title, char_desc = get_character_info(current_level)
 
 

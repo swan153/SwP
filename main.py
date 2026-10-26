@@ -73,3 +73,169 @@ def get_character_info(level):
         return "🦅", "멋진 아기 독수리", "이제 난이도 있는 문제도 쉽게 풀어요!"
     else:
         return "👑🦅", "상승하는 독수리 왕", "모든 목표를 파괴하는 완벽한 공부 마스터!"
+
+char_icon, char_title, char_desc = get_character_info(current_level)
+
+
+# --- 사이드바 메뉴 ---
+st.sidebar.title("🎒 고교 학습 캐리")
+st.sidebar.markdown(f"**현재 캐릭터:** {char_icon} **Level {current_level}**")
+st.sidebar.progress(progress_percentage)
+st.sidebar.caption(f"다음 레벨까지: {EXP_PER_LEVEL - current_level_exp} EXP 필요")
+
+menu = st.sidebar.radio(
+    "메뉴 이동:",
+    ["🏠 홈 (성장 대시보드 & 투두)", "⏱️ 뽀모도로 타이머", "📝 오답 & 학습 노트", "⏳ D-Day 마인드셋"]
+)
+
+
+# --- 1. 홈 (성장 대시보드 & 성취감 투두리스트) ---
+if menu == "🏠 홈 (성장 대시보드 & 투두)":
+    st.markdown("<h1 class='main-title'>🔥 오늘의 할 일을 달성하고 캐릭터를 키워보세요!</h1>", unsafe_allow_html=True)
+    
+    col_char, col_todo = st.columns([1.2, 2])
+
+    # [좌측] 성장하는 캐릭터 영역
+    with col_char:
+        st.markdown("<div class='status-card'>", unsafe_allow_html=True)
+        st.markdown(f"<span class='badge'>Lv.{current_level} {char_title}</span>", unsafe_allow_html=True)
+        st.markdown(f"<div class='character-stage'>{char_icon}</div>", unsafe_allow_html=True)
+        st.caption(f"\"{char_desc}\"")
+        
+        st.write("---")
+        st.markdown(f"**누적 경험치:** `{st.session_state.exp} EXP`")
+        st.write("📈 **레벨 진행도**")
+        st.progress(progress_percentage)
+        st.caption(f"{current_level_exp} / {EXP_PER_LEVEL} EXP")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # [우측] 성취감 투두리스트 영역
+    with col_todo:
+        st.subheader("📌 오늘 끝낼 공부 목록")
+        
+        # 투두 입력 폼
+        with st.form(key="add_todo_form", clear_on_submit=True):
+            col_in1, col_in2 = st.columns([3, 1])
+            new_task = col_in1.text_input("새로운 학습 목표 (예: 수학 모의고사 1회 풀기, 영어 단어 30개)", label_visibility="collapsed", placeholder="달성할 공부 목표를 입력하세요!")
+            submit_button = col_in2.form_submit_button("추가 (+EXP)")
+            
+            if submit_button and new_task:
+                st.session_state.todos.append({"task": new_task, "done": False})
+                st.rerun()
+
+        st.markdown("---")
+
+        if not st.session_state.todos:
+            st.info("💡 오른쪽 위에 학습 목표를 등록하고 완료할 때마다 캐릭터를 키워보세요!")
+        else:
+            for i, todo in enumerate(st.session_state.todos):
+                c1, c2 = st.columns([0.85, 0.15])
+                
+                # 기존 완료 여부 체크
+                was_done = todo["done"]
+                is_done = c1.checkbox(
+                    f"{'~~' + todo['task'] + '~~' if was_done else todo['task']}",
+                    value=was_done,
+                    key=f"todo_{i}"
+                )
+
+                # 상태 변화 처리 (경험치 지급 및 축하 이펙트)
+                if is_done != was_done:
+                    st.session_state.todos[i]["done"] = is_done
+                    if is_done:
+                        st.session_state.exp += EXP_PER_TASK
+                        st.toast(f"🎉 목표 달성! +{EXP_PER_TASK} EXP 획득!", icon="✨")
+                        # 레벨업 체크
+                        if (st.session_state.exp // EXP_PER_LEVEL) + 1 > current_level:
+                            st.balloons()
+                            st.success(f"🎊 레벨 업! **Lv.{current_level + 1}** 이 되었습니다!")
+                    else:
+                        st.session_state.exp = max(0, st.session_state.exp - EXP_PER_TASK)
+                    st.rerun()
+
+                if c2.button("삭제", key=f"del_{i}"):
+                    if todo["done"]:
+                        st.session_state.exp = max(0, st.session_state.exp - EXP_PER_TASK)
+                    st.session_state.todos.pop(i)
+                    st.rerun()
+
+
+# --- 2. 뽀모도로 타이머 ---
+elif menu == "⏱️ 뽀모도로 타이머":
+    st.title("⏱️ 집중 스톱워치 (뽀모도로)")
+    st.write("25분 집중, 5분 휴식 루틴으로 몰입도를 극대화해보세요.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        focus_time = st.number_input("집중 시간(분):", min_value=5, max_value=120, value=25, step=5)
+    with col2:
+        break_time = st.number_input("휴식 시간(분):", min_value=1, max_value=30, value=5, step=1)
+
+    if st.button("🚀 타이머 시작", use_container_width=True):
+        ph = st.empty()
+        total_seconds = focus_time * 60
+        
+        while total_seconds > 0:
+            mins, secs = divmod(total_seconds, 60)
+            time_format = f"{mins:02d}:{secs:02d}"
+            ph.markdown(f"<h1 style='text-align: center; color: #E74C3C;'>🔥 집중 시간: {time_format}</h1>", unsafe_allow_html=True)
+            time.sleep(1)
+            total_seconds -= 1
+        
+        ph.markdown("<h2 style='text-align: center; color: #2ECC71;'>🎉 수고하셨습니다! 맛있는 휴식을 취하세요!</h2>", unsafe_allow_html=True)
+        st.balloons()
+
+
+# --- 3. 오답 & 학습 노트 ---
+elif menu == "📝 오답 & 학습 노트":
+    st.title("📝 오답 및 핵심 개념 정리")
+    st.write("틀린 이유나 꼭 기억해야 할 공식을 정리해 두세요.")
+
+    with st.form("note_form", clear_on_submit=True):
+        col_sub, col_title = st.columns([1, 2])
+        subject = col_sub.selectbox("과목", ["국어", "수학", "영어", "한국사", "탐구(사회/과학)", "기타"])
+        title = col_title.text_input("제목 (예: 수학 II 미분가능성 복습)")
+        content = st.text_area("내용 요약 및 복습 키포인트", height=150)
+        
+        save_btn = st.form_submit_button("노트 저장")
+        if save_btn:
+            if title and content:
+                st.session_state.notes.append({
+                    "date": datetime.date.today().strftime("%Y-%m-%d"),
+                    "subject": subject,
+                    "title": title,
+                    "content": content
+                })
+                st.success("노트가 저장되었습니다!")
+                st.rerun()
+            else:
+                st.warning("제목과 내용을 입력해 주세요.")
+
+    st.markdown("---")
+    st.subheader("📚 작성한 노트 목록")
+    if not st.session_state.notes:
+        st.info("아직 작성된 학습 노트가 없습니다.")
+    else:
+        for note in reversed(st.session_state.notes):
+            with st.expander(f"[{note['subject']}] {note['title']} ({note['date']})"):
+                st.write(note['content'])
+
+
+# --- 4. D-Day 마인드셋 ---
+elif menu == "⏳ D-Day 마인드셋":
+    st.title("⏳ 시험 & 목표 D-Day")
+    
+    col_d1, col_d2 = st.columns(2)
+    with col_d1:
+        target_name = st.text_input("목표 이름", value="6월 모의고사 / 기말고사")
+    with col_d2:
+        target_date = st.date_input("목표 날짜", min_value=datetime.date.today())
+
+    today = datetime.date.today()
+    days_left = (target_date - today).days
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    if days_left == 0:
+        st.error(f"🔥 오늘은 **{target_name}** 당일입니다! 지금까지 노력한 자신을 믿으세요!")
+    else:
+        st.info(f"🎯 **{target_name}**까지 **D-{days_left}** 일 남았습니다. 매일 하나씩 목표를 채워가세요!")

@@ -65,4 +65,11 @@ progress_percentage = min(current_level_exp / EXP_PER_LEVEL, 1.0)
 def get_character_info(level):
     if level == 1:
         return "🥚", "알 단계", "막 공부를 시작하려는 소중한 알입니다."
-    elif level ==
+    elif level == 2:
+        return "🐣", "갓 깨어난 병아리", "조금씩 지식을 흡수하며 깨어났어요!"
+    elif level == 3:
+        return "🐥", "열공 병아리", "책을 들고 열공 중인 당당한 병아리!"
+    elif level == 4:
+        return "🦅", "멋진 아기 독수리", "이제 난이도 있는 문제도 쉽게 풀어요!"
+    else:
+        return "👑🦅", "상승하는 독수리 왕", "모든 목표를 파괴하는 완벽한 공부 마스터!"

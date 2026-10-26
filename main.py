@@ -5,12 +5,12 @@ import time
 # --- 페이지 기본 설정 ---
 st.set_page_config(
     page_title="고등학생 성취감 메이커 - 레벨업 학습 플래너",
-    page_icon="🎓",
+    page_icon="🐣",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- 커스텀 CSS ---
+# --- 커스텀 CSS (귀엽고 깔끔한 UI) ---
 st.markdown("""
     <style>
     .main-title {
@@ -27,6 +27,10 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         text-align: center;
     }
+    .character-stage {
+        font-size: 5rem;
+        margin: 10px 0;
+    }
     .badge {
         display: inline-block;
         background-color: #FFEAA7;
@@ -39,9 +43,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 세션 상태 초기화 ---
+# --- 세션 상태(Session State) 초기화 ---
 if "exp" not in st.session_state:
-    st.session_state.exp = 0
+    st.session_state.exp = 0  # 총 경험치
 
 if "todos" not in st.session_state:
     st.session_state.todos = []
@@ -49,53 +53,33 @@ if "todos" not in st.session_state:
 if "notes" not in st.session_state:
     st.session_state.notes = []
 
-# --- 캐릭터 성장 로직 (이미지 URL 적용) ---
-EXP_PER_TASK = 20
-EXP_PER_LEVEL = 100
+# --- 캐릭터 성장 관련 시스템 로직 ---
+EXP_PER_TASK = 20      # 할 일 1개 완료 시 얻는 EXP
+EXP_PER_LEVEL = 100    # 레벨업에 필요한 EXP
 
 current_level = (st.session_state.exp // EXP_PER_LEVEL) + 1
 current_level_exp = st.session_state.exp % EXP_PER_LEVEL
 progress_percentage = min(current_level_exp / EXP_PER_LEVEL, 1.0)
 
+# 캐릭터 단계 결정 (레벨에 따른 성장)
 def get_character_info(level):
-    # 정확한 계란, 병아리, 독수리 일러스트 이미지 URL
     if level == 1:
-        return (
-            "https://cdn-icons-png.flaticon.com/512/3132/3132712.png", 
-            "알 단계", 
-            "막 공부를 시작하려는 소중한 알입니다."
-        )
+        return "🥚", "알 단계", "막 공부를 시작하려는 소중한 알입니다."
     elif level == 2:
-        return (
-            "https://cdn-icons-png.flaticon.com/512/2970/2970785.png", 
-            "갓 깨어난 병아리", 
-            "조금씩 지식을 흡수하며 깨어났어요!"
-        )
+        return "🐣", "갓 깨어난 병아리", "조금씩 지식을 흡수하며 깨어났어요!"
     elif level == 3:
-        return (
-            "https://cdn-icons-png.flaticon.com/512/2641/2641409.png", 
-            "열공 병아리", 
-            "책을 들고 몰입 중인 당당한 병아리!"
-        )
+        return "🐥", "열공 병아리", "책을 들고 열공 중인 당당한 병아리!"
     elif level == 4:
-        return (
-            "https://cdn-icons-png.flaticon.com/512/1998/1998611.png", 
-            "멋진 독수리", 
-            "이제 어려운 문제도 쉽게 파헤쳐요!"
-        )
+        return "🦅", "멋진 아기 독수리", "이제 난이도 있는 문제도 쉽게 풀어요!"
     else:
-        return (
-            "https://cdn-icons-png.flaticon.com/512/2583/2583344.png", 
-            "공부의 신 독수리 왕", 
-            "모든 목표를 정복한 완벽한 공부 마스터!"
-        )
-char_img, char_title, char_desc = get_character_info(current_level)
+        return "👑🦅", "상승하는 독수리 왕", "모든 목표를 파괴하는 완벽한 공부 마스터!"
+
+char_icon, char_title, char_desc = get_character_info(current_level)
 
 
 # --- 사이드바 메뉴 ---
 st.sidebar.title("🎒 고교 학습 캐리")
-st.sidebar.markdown(f"**현재 캐릭터:** **Level {current_level}**")
-st.sidebar.image(char_img, width=80)
+st.sidebar.markdown(f"**현재 캐릭터:** {char_icon} **Level {current_level}**")
 st.sidebar.progress(progress_percentage)
 st.sidebar.caption(f"다음 레벨까지: {EXP_PER_LEVEL - current_level_exp} EXP 필요")
 
@@ -107,7 +91,7 @@ menu = st.sidebar.radio(
 
 # --- 1. 홈 (성장 대시보드 & 성취감 투두리스트) ---
 if menu == "🏠 홈 (성장 대시보드 & 투두)":
-    st.markdown("<h1 class='main-title'>🔥 오늘 목표를 달성하고 캐릭터를 성장시켜 보세요!</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='main-title'>🔥 오늘의 할 일을 달성하고 캐릭터를 키워보세요!</h1>", unsafe_allow_html=True)
     
     col_char, col_todo = st.columns([1.2, 2])
 
@@ -115,11 +99,7 @@ if menu == "🏠 홈 (성장 대시보드 & 투두)":
     with col_char:
         st.markdown("<div class='status-card'>", unsafe_allow_html=True)
         st.markdown(f"<span class='badge'>Lv.{current_level} {char_title}</span>", unsafe_allow_html=True)
-        
-        # 이미지 출력 (st.image 활용)
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.image(char_img, width=160)
-        
+        st.markdown(f"<div class='character-stage'>{char_icon}</div>", unsafe_allow_html=True)
         st.caption(f"\"{char_desc}\"")
         
         st.write("---")
@@ -133,13 +113,10 @@ if menu == "🏠 홈 (성장 대시보드 & 투두)":
     with col_todo:
         st.subheader("📌 오늘 끝낼 공부 목록")
         
+        # 투두 입력 폼
         with st.form(key="add_todo_form", clear_on_submit=True):
             col_in1, col_in2 = st.columns([3, 1])
-            new_task = col_in1.text_input(
-                "새로운 학습 목표 (예: 수학 모의고사 1회 풀기, 영어 단어 30개)", 
-                label_visibility="collapsed", 
-                placeholder="달성할 공부 목표를 입력하세요!"
-            )
+            new_task = col_in1.text_input("새로운 학습 목표 (예: 수학 모의고사 1회 풀기, 영어 단어 30개)", label_visibility="collapsed", placeholder="달성할 공부 목표를 입력하세요!")
             submit_button = col_in2.form_submit_button("추가 (+EXP)")
             
             if submit_button and new_task:
@@ -149,11 +126,12 @@ if menu == "🏠 홈 (성장 대시보드 & 투두)":
         st.markdown("---")
 
         if not st.session_state.todos:
-            st.info("💡 목표를 등록하고 완료할 때마다 경험치를 받아 캐릭터를 키워보세요!")
+            st.info("💡 오른쪽 위에 학습 목표를 등록하고 완료할 때마다 캐릭터를 키워보세요!")
         else:
             for i, todo in enumerate(st.session_state.todos):
                 c1, c2 = st.columns([0.85, 0.15])
                 
+                # 기존 완료 여부 체크
                 was_done = todo["done"]
                 is_done = c1.checkbox(
                     f"{'~~' + todo['task'] + '~~' if was_done else todo['task']}",
@@ -161,11 +139,13 @@ if menu == "🏠 홈 (성장 대시보드 & 투두)":
                     key=f"todo_{i}"
                 )
 
+                # 상태 변화 처리 (경험치 지급 및 축하 이펙트)
                 if is_done != was_done:
                     st.session_state.todos[i]["done"] = is_done
                     if is_done:
                         st.session_state.exp += EXP_PER_TASK
                         st.toast(f"🎉 목표 달성! +{EXP_PER_TASK} EXP 획득!", icon="✨")
+                        # 레벨업 체크
                         if (st.session_state.exp // EXP_PER_LEVEL) + 1 > current_level:
                             st.balloons()
                             st.success(f"🎊 레벨 업! **Lv.{current_level + 1}** 이 되었습니다!")
@@ -182,8 +162,8 @@ if menu == "🏠 홈 (성장 대시보드 & 투두)":
 
 # --- 2. 뽀모도로 타이머 ---
 elif menu == "⏱️ 뽀모도로 타이머":
-    st.title("⏱️ 몰입 스톱워치 (뽀모도로)")
-    st.write("25분 몰입, 5분 휴식 루틴으로 공부 효율을 높이세요.")
+    st.title("⏱️ 집중 스톱워치 (뽀모도로)")
+    st.write("25분 집중, 5분 휴식 루틴으로 몰입도를 극대화해보세요.")
 
     col1, col2 = st.columns(2)
     with col1:

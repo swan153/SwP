@@ -126,7 +126,6 @@ char_icon, char_title, char_desc = get_character_info(current_level)
 def generate_ai_quiz(prompt_info, num_questions):
     with st.spinner("Gemini AI가 맞춤형 문제를 생성 중입니다..."):
         try:
-            # 최신 GenAI Client 생성
             client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
             
             prompt = f"""
@@ -147,9 +146,9 @@ def generate_ai_quiz(prompt_info, num_questions):
             ]
             """
             
-            # 최신 SDK 응답 요청 (JSON 전용 출력 옵션 적용)
+            # 최신 gemini-3.8-flash 모델 적용
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.8-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json"

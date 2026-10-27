@@ -47,6 +47,16 @@ st.markdown("""
         border: 1px solid #E2E8F0;
         margin-bottom: 15px;
     }
+    .empty-todo-recommend {
+        color: #888888;
+        font-size: 0.95rem;
+        font-style: italic;
+        background-color: #F1F5F9;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 4px solid #94A3B8;
+        margin-top: 10px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -128,7 +138,6 @@ def generate_ai_quiz(prompt_info, num_questions):
         try:
             client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
             
-            # 지시사항 및 프롬프트 최적화 (토큰 수 단축)
             prompt = f"""
             고등학교 문제 출제자 역할을 수행하세요. 아래 정보로 객관식 문제를 생성하세요.
             {prompt_info}
@@ -146,7 +155,6 @@ def generate_ai_quiz(prompt_info, num_questions):
             ]
             """
             
-            # temperature=0.3 설정으로 연산 속도 극대화
             response = client.models.generate_content(
                 model="gemini-3.8-flash",
                 contents=prompt,
@@ -216,7 +224,17 @@ if menu == "🏠 홈 (성장 대시보드 & 투두)":
 
         st.markdown("---")
         if not st.session_state.todos:
-            st.info("💡 목표를 등록하고 완료할 때마다 경험치를 받아 캐릭터를 키워보세요!")
+            # 💡 투두리스트가 완전히 비어 있을 때 표시되는 AI 추천 회색 안내 문구
+            st.markdown("""
+                <div class='empty-todo-recommend'>
+                    <b>💡 AI 학습 추천: 아직 등록된 목표가 없네요!</b><br>
+                    무엇부터 시작할지 고민된다면 아래 목표들을 하나씩 추가해 보세요:<br><br>
+                    • 📘 영어 단어 30개 외우기 및 테스트<br>
+                    • 📐 수학 모의고사 기출문제 5개 풀고 오답정리<br>
+                    • ⏱️ 뽀모도로 타이머 1세트(25분) 집중 공부하기<br>
+                    • 📝 지난 시간 틀렸던 문제 AI 재시험 출제해서 풀어보기
+                </div>
+            """, unsafe_allow_html=True)
         else:
             for i, todo in enumerate(st.session_state.todos):
                 c1, c2 = st.columns([0.85, 0.15])

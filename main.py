@@ -146,7 +146,6 @@ def generate_ai_quiz(prompt_info, num_questions):
             ]
             """
             
-            # 최신 gemini-3.8-flash 모델 적용
             response = client.models.generate_content(
                 model="gemini-3.8-flash",
                 contents=prompt,
@@ -163,8 +162,13 @@ def generate_ai_quiz(prompt_info, num_questions):
             st.session_state.quiz_submitted = False
             st.success("문제 출제가 완료되었습니다! 아래에서 풀어보세요.")
             st.rerun()
+
         except Exception as e:
-            st.error(f"문제 생성 중 오류가 발생했습니다: {e}")
+            err_msg = str(e)
+            if "503" in err_msg or "UNAVAILABLE" in err_msg:
+                st.warning("⚠️ 구글 AI 서버에 순간 요청이 몰려 잠시 지연되고 있습니다. 5초 후 버튼을 다시 눌러주세요!")
+            else:
+                st.error(f"문제 생성 중 오류가 발생했습니다: {e}")
 
 # --- 8. 사이드바 ---
 st.sidebar.title("🎒 고교 학습 캐리")

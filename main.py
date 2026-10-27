@@ -145,7 +145,7 @@ def generate_ai_quiz(prompt_info, num_questions):
               }}
             ]
             """
-            model = genai.GenerativeModel("gemini-1.5-flash")
+            model = genai.GenerativeModel("gemini-2.5-flash")
             res = model.generate_content(prompt)
             
             clean_text = res.text.strip().replace("```json", "").replace("```", "")

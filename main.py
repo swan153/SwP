@@ -2,7 +2,8 @@ import streamlit as st
 import datetime
 import time
 import json
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from supabase import create_client, Client
 
 # --- 1. 페이지 기본 설정 ---
@@ -57,9 +58,6 @@ if use_supabase:
         return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
     supabase = init_supabase()
     USER_ID = "default_user"
-
-if "GEMINI_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 # --- 4. DB 저장/로드 로직 ---
 def load_data():
@@ -124,10 +122,13 @@ def get_character_info(level):
 
 char_icon, char_title, char_desc = get_character_info(current_level)
 
-# --- 7. AI 문제 생성 헬퍼 함수 ---
+# --- 7. 최신 google-genai 기반 AI 문제 생성 함수 ---
 def generate_ai_quiz(prompt_info, num_questions):
     with st.spinner("Gemini AI가 맞춤형 문제를 생성 중입니다..."):
         try:
+            # 최신 GenAI Client 생성
+            client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+            
             prompt = f"""
             너는 고등학교 전문 교사야. 아래 정보와 조건을 바탕으로 객관식 문제를 JSON 형식으로만 생성해줘.
             
@@ -145,11 +146,17 @@ def generate_ai_quiz(prompt_info, num_questions):
               }}
             ]
             """
-            # 최신 Gemini 모델명으로 설정
-            model = genai.GenerativeModel("gemini-2.5-flash")
-            res = model.generate_content(prompt)
             
-            clean_text = res.text.strip().replace("```json", "").replace("```", "")
+            # 최신 SDK 응답 요청 (JSON 전용 출력 옵션 적용)
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
+            )
+            
+            clean_text = response.text.strip().replace("```json", "").replace("```", "")
             quiz_json = json.loads(clean_text)
             
             st.session_state.quiz_data = quiz_json
@@ -158,7 +165,7 @@ def generate_ai_quiz(prompt_info, num_questions):
             st.success("문제 출제가 완료되었습니다! 아래에서 풀어보세요.")
             st.rerun()
         except Exception as e:
-            st.error(f"문제 생성 파싱 오류가 발생했습니다. 다시 시도해 보세요: {e}")
+            st.error(f"문제 생성 중 오류가 발생했습니다: {e}")
 
 # --- 8. 사이드바 ---
 st.sidebar.title("🎒 고교 학습 캐리")

@@ -145,6 +145,7 @@ def generate_ai_quiz(prompt_info, num_questions):
               }}
             ]
             """
+            # 최신 Gemini 모델명으로 설정
             model = genai.GenerativeModel("gemini-2.5-flash")
             res = model.generate_content(prompt)
             

@@ -5,7 +5,7 @@ import json
 import google.generativeai as genai
 from supabase import create_client, Client
 
-# --- 페이지 기본 설정 ---
+# --- 1. 페이지 기본 설정 ---
 st.set_page_config(
     page_title="고등학생 성취감 메이커 - AI 레벨업 학습 플래너",
     page_icon="🎓",
@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Custom CSS ---
+# --- 2. Custom CSS ---
 st.markdown("""
     <style>
     .main-title {
@@ -49,7 +49,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- API & DB 연결 ---
+# --- 3. API & DB 연결 ---
 use_supabase = "SUPABASE_URL" in st.secrets and "SUPABASE_KEY" in st.secrets
 if use_supabase:
     @st.cache_resource
@@ -61,7 +61,7 @@ if use_supabase:
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
-# --- DB 저장/로드 로직 ---
+# --- 4. DB 저장/로드 로직 ---
 def load_data():
     if use_supabase:
         try:
@@ -87,7 +87,7 @@ def save_data():
         except Exception as e:
             st.error(f"DB 저장 실패: {e}")
 
-# --- 세션 상태 초기화 ---
+# --- 5. 세션 상태 초기화 ---
 if "initialized" not in st.session_state:
     db_data = load_data()
     st.session_state.exp = db_data.get("exp", 0)
@@ -102,7 +102,7 @@ if "user_answers" not in st.session_state:
 if "quiz_submitted" not in st.session_state:
     st.session_state.quiz_submitted = False
 
-# --- 레벨 & 경험치 로직 ---
+# --- 6. 레벨 & 경험치 로직 ---
 EXP_PER_TASK = 20
 EXP_PER_LEVEL = 100
 
@@ -124,7 +124,42 @@ def get_character_info(level):
 
 char_icon, char_title, char_desc = get_character_info(current_level)
 
-# --- 사이드바 ---
+# --- 7. AI 문제 생성 헬퍼 함수 ---
+def generate_ai_quiz(prompt_info, num_questions):
+    with st.spinner("Gemini AI가 맞춤형 문제를 생성 중입니다..."):
+        try:
+            prompt = f"""
+            너는 고등학교 전문 교사야. 아래 정보와 조건을 바탕으로 객관식 문제를 JSON 형식으로만 생성해줘.
+            
+            {prompt_info}
+            [문제 수]: {num_questions}개
+
+            응답은 반드시 마크다운 코드블록 없이 순수 JSON 객체 배열 형태로 작성해야 해:
+            [
+              {{
+                "id": 1,
+                "question": "문제 내용",
+                "options": ["1번 보기", "2번 보기", "3번 보기", "4번 보기"],
+                "answer": "정답 보기 문자열과 정확히 일치하는 텍스트",
+                "explanation": "해설 내용"
+              }}
+            ]
+            """
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            res = model.generate_content(prompt)
+            
+            clean_text = res.text.strip().replace("```json", "").replace("```", "")
+            quiz_json = json.loads(clean_text)
+            
+            st.session_state.quiz_data = quiz_json
+            st.session_state.user_answers = {}
+            st.session_state.quiz_submitted = False
+            st.success("문제 출제가 완료되었습니다! 아래에서 풀어보세요.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"문제 생성 파싱 오류가 발생했습니다. 다시 시도해 보세요: {e}")
+
+# --- 8. 사이드바 ---
 st.sidebar.title("🎒 고교 학습 캐리")
 st.sidebar.markdown(f"**현재 캐릭터:** {char_icon} **Level {current_level}**")
 st.sidebar.progress(progress_percentage)
@@ -135,7 +170,9 @@ menu = st.sidebar.radio(
     ["🏠 홈 (성장 대시보드 & 투두)", "🤖 AI 맞춤 문제 풀기", "📝 오답 & 학습 노트", "⏱️ 뽀모도로 타이머", "⏳ D-Day 마인드셋"]
 )
 
-# --- 1. 홈 ---
+# --- 9. 메뉴별 페이지 구현 ---
+
+# 🏠 홈 (성장 대시보드 & 투두)
 if menu == "🏠 홈 (성장 대시보드 & 투두)":
     st.markdown("<h1 class='main-title'>🔥 오늘 목표를 달성하고 캐릭터를 성장시켜 보세요!</h1>", unsafe_allow_html=True)
     col_char, col_todo = st.columns([1.2, 2])
@@ -193,14 +230,12 @@ if menu == "🏠 홈 (성장 대시보드 & 투두)":
                     save_data()
                     st.rerun()
 
-
-# --- 2. 🤖 AI 맞춤 문제 풀기 ---
+# 🤖 AI 맞춤 문제 풀기
 elif menu == "🤖 AI 맞춤 문제 풀기":
     st.title("🤖 AI 맞춤 문제 출제 & 오답 재시험")
     
     tab1, tab2 = st.tabs(["🎯 키워드 기반 출제", "🔄 오답 노트 기반 재시험"])
 
-    # 탭 1: 직접 공부 범위를 입력하여 출제
     with tab1:
         st.write("공부한 단원이나 키워드를 입력하여 문제를 생성합니다.")
         with st.form("generate_quiz_form_keyword"):
@@ -219,7 +254,6 @@ elif menu == "🤖 AI 맞춤 문제 풀기":
                 prompt_content = f"[과목]: {subject}\n[범위]: {topic}"
                 generate_ai_quiz(prompt_content, num_q)
 
-    # 탭 2: 저장된 오답 노트를 불러와 재시험 출제
     with tab2:
         st.write("작성해 둔 **오답 노트**를 바탕으로 AI가 핵심 개념을 변형한 **재시험 문제**를 만들어 줍니다!")
         
@@ -227,7 +261,6 @@ elif menu == "🤖 AI 맞춤 문제 풀기":
             st.info("📌 아직 작성된 오답 노트가 없습니다. '📝 오답 & 학습 노트' 메뉴에서 먼저 오답을 등록해 보세요!")
         else:
             with st.form("generate_quiz_form_note"):
-                # 작성된 오답 노트 옵션 목록 생성
                 note_options = [f"[{n['subject']}] {n['title']} ({n['date']})" for n in st.session_state.notes]
                 selected_note_str = st.selectbox("재시험을 칠 오답 노트를 선택하세요:", note_options)
                 selected_idx = note_options.index(selected_note_str)
@@ -250,7 +283,6 @@ elif menu == "🤖 AI 맞춤 문제 풀기":
                     """
                     generate_ai_quiz(prompt_content, num_q_note)
 
-    # 3. 공통 문제 풀이 및 자동 채점 화면
     if st.session_state.quiz_data:
         st.markdown("---")
         st.subheader("📝 AI 실전 테스트")
@@ -294,44 +326,7 @@ elif menu == "🤖 AI 맞춤 문제 풀기":
                 st.toast(f"🎉 {correct_count}문제 정답! +{gained_exp} EXP 획득!", icon="✨")
                 st.balloons()
 
-
-# --- AI 문제 생성 헬퍼 함수 ---
-def generate_ai_quiz(prompt_info, num_questions):
-    with st.spinner("Gemini AI가 맞춤형 재시험 문제를 생성 중입니다..."):
-        try:
-            prompt = f"""
-            너는 고등학교 전문 교사야. 아래 정보와 조건을 바탕으로 객관식 문제를 JSON 형식으로만 생성해줘.
-            
-            {prompt_info}
-            [문제 수]: {num_questions}개
-
-            응답은 반드시 마크다운 코드블록 없이 순수 JSON 객체 배열 형태로 작성해야 해:
-            [
-              {{
-                "id": 1,
-                "question": "문제 내용",
-                "options": ["1번 보기", "2번 보기", "3번 보기", "4번 보기"],
-                "answer": "정답 보기 문자열과 정확히 일치하는 텍스트",
-                "explanation": "해설 내용"
-              }}
-            ]
-            """
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            res = model.generate_content(prompt)
-            
-            clean_text = res.text.strip().replace("```json", "").replace("```", "")
-            quiz_json = json.loads(clean_text)
-            
-            st.session_state.quiz_data = quiz_json
-            st.session_state.user_answers = {}
-            st.session_state.quiz_submitted = False
-            st.success("문제 출제가 완료되었습니다! 아래에서 풀어보세요.")
-            st.rerun()
-        except Exception as e:
-            st.error(f"문제 생성 파싱 오류가 발생했습니다. 다시 시도해 보세요: {e}")
-
-
-# --- 3. 오답 & 학습 노트 ---
+# 📝 오답 & 학습 노트
 elif menu == "📝 오답 & 학습 노트":
     st.title("📝 오답 및 개념 정리 노트")
     st.write("이곳에 정리한 오답 노트는 **'🤖 AI 맞춤 문제 풀기'** 메뉴에서 변형 재시험 문제로 바로 출제할 수 있습니다!")
@@ -365,8 +360,7 @@ elif menu == "📝 오답 & 학습 노트":
             with st.expander(f"[{note['subject']}] {note['title']} ({note['date']})"):
                 st.write(note['content'])
 
-
-# --- 4. 뽀모도로 타이머 ---
+# ⏱️ 뽀모도로 타이머
 elif menu == "⏱️ 뽀모도로 타이머":
     st.title("⏱️ 몰입 스톱워치")
     st.write("25분 몰입 후 5분 휴식 루틴을 가집니다.")
@@ -383,8 +377,7 @@ elif menu == "⏱️ 뽀모도로 타이머":
         ph.markdown("<h2 style='text-align: center; color: #2ECC71;'>🎉 집중 종료! 수고하셨습니다.</h2>", unsafe_allow_html=True)
         st.balloons()
 
-
-# --- 5. D-Day 마인드셋 ---
+# ⏳ D-Day 마인드셋
 elif menu == "⏳ D-Day 마인드셋":
     st.title("⏳ 시험 D-Day")
     c_d1, c_d2 = st.columns(2)

@@ -122,35 +122,37 @@ def get_character_info(level):
 
 char_icon, char_title, char_desc = get_character_info(current_level)
 
-# --- 7. 최신 google-genai 기반 AI 문제 생성 함수 ---
+# --- 7. 속도 최적화 적용 AI 문제 생성 함수 ---
 def generate_ai_quiz(prompt_info, num_questions):
-    with st.spinner("Gemini AI가 맞춤형 문제를 생성 중입니다..."):
+    with st.spinner("⚡ AI가 빠른 속도로 문제를 출제 중입니다..."):
         try:
             client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
             
+            # 지시사항 및 프롬프트 최적화 (토큰 수 단축)
             prompt = f"""
-            너는 고등학교 전문 교사야. 아래 정보와 조건을 바탕으로 객관식 문제를 JSON 형식으로만 생성해줘.
-            
+            고등학교 문제 출제자 역할을 수행하세요. 아래 정보로 객관식 문제를 생성하세요.
             {prompt_info}
-            [문제 수]: {num_questions}개
+            수량: {num_questions}개
 
-            응답은 반드시 마크다운 코드블록 없이 순수 JSON 객체 배열 형태로 작성해야 해:
+            마크다운 코드블록 없이 순수 JSON 배열만 반환하세요:
             [
               {{
                 "id": 1,
-                "question": "문제 내용",
-                "options": ["1번 보기", "2번 보기", "3번 보기", "4번 보기"],
-                "answer": "정답 보기 문자열과 정확히 일치하는 텍스트",
-                "explanation": "해설 내용"
+                "question": "문제",
+                "options": ["1번", "2번", "3번", "4번"],
+                "answer": "정답 보기 문자열과 일치하는 텍스트",
+                "explanation": "해설"
               }}
             ]
             """
             
+            # temperature=0.3 설정으로 연산 속도 극대화
             response = client.models.generate_content(
                 model="gemini-3.8-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
-                    response_mime_type="application/json"
+                    response_mime_type="application/json",
+                    temperature=0.3
                 )
             )
             
@@ -160,15 +162,15 @@ def generate_ai_quiz(prompt_info, num_questions):
             st.session_state.quiz_data = quiz_json
             st.session_state.user_answers = {}
             st.session_state.quiz_submitted = False
-            st.success("문제 출제가 완료되었습니다! 아래에서 풀어보세요.")
+            st.success("문제 출제가 완료되었습니다!")
             st.rerun()
 
         except Exception as e:
             err_msg = str(e)
             if "503" in err_msg or "UNAVAILABLE" in err_msg:
-                st.warning("⚠️ 구글 AI 서버에 순간 요청이 몰려 잠시 지연되고 있습니다. 5초 후 버튼을 다시 눌러주세요!")
+                st.warning("⚠️ 구글 AI 서버 트래픽 폭주로 잠시 지연되었습니다. 5초 후 [문제 만들기]를 다시 눌러주세요!")
             else:
-                st.error(f"문제 생성 중 오류가 발생했습니다: {e}")
+                st.error(f"문제 생성 오류가 발생했습니다: {e}")
 
 # --- 8. 사이드바 ---
 st.sidebar.title("🎒 고교 학습 캐리")
@@ -285,12 +287,12 @@ elif menu == "🤖 AI 맞춤 문제 풀기":
                     st.error("Secrets에 `GEMINI_API_KEY`가 설정되어 있지 않습니다.")
                 else:
                     prompt_content = f"""
-                    [학생의 기존 오답 노트 데이터]
+                    [학생 오답 노트 데이터]
                     과목: {selected_note['subject']}
                     제목: {selected_note['title']}
-                    오답 및 개념 정리 내용: {selected_note['content']}
+                    오답 및 개념: {selected_note['content']}
                     
-                    위 오답 노트 내용의 핵심 개념과 학생이 틀린 지점을 철저히 분석하여, 해당 개념을 확실히 이해했는지 점검할 수 있는 변형 및 유사 문제를 출제해줘.
+                    위 개념 및 약점을 점검할 변형 문제 출제.
                     """
                     generate_ai_quiz(prompt_content, num_q_note)
 
